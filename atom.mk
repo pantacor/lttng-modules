@@ -1,0 +1,53 @@
+LOCAL_PATH := $(call my-dir)
+
+include $(CLEAR_VARS)
+
+target_cross := $(TARGET_CROSS)
+ifdef TARGET_LINUX_CROSS
+target_cross := $(TARGET_LINUX_CROSS)
+endif
+
+ifndef TARGET_LINUX_ARCH
+  TARGET_LINUX_ARCH := $(TARGET_ARCH)
+endif
+
+ifeq ("$(TARGET_LINUX_ARCH)","x64")
+  LINUX_ARCH := x86_64
+  LINUX_SRCARCH := x86
+else ifeq ("$(TARGET_LINUX_ARCH)","aarch64")
+  LINUX_ARCH := arm64
+  LINUX_SRCARCH := arm64
+else
+  LINUX_ARCH := $(TARGET_LINUX_ARCH)
+  LINUX_SRCARCH := $(TARGET_LINUX_ARCH)
+endif
+
+LOCAL_LIBRARIES := linux
+
+LOCAL_MODULE := lttng
+LOCAL_MODULE_FILENAME := $(LOCAL_MODULE).done
+
+LTTNG_SRC_DIR := $(LOCAL_PATH)
+LTTNG_BUILD_DIR := $(call local-get-build-dir)
+
+KERNELDIR := $(TARGET_OUT)/build/linux
+KERNELVER := $$(cat $(TARGET_OUT)/build/linux/include/config/kernel.release)
+LTTNG_MAKE_ARGS := \
+	ARCH=$(LINUX_SRCARCH) \
+	CROSS_COMPILE="$(target_cross)" \
+	CROSS="$(target_cross)" \
+	CONFIG_PREFIX="$(TARGET_OUT_STAGING)" \
+	PREFIX="$(TARGET_OUT_STAGING)" \
+	BUILDDIR="$(LIBTHTTP_BUILD_DIR)" \
+	SRCDIR="$(LIBTHTTP_SRC_DIR)" \
+	KERNELDIR="$(KERNELDIR)" \
+	_KERNELRELEASE="$(KERNELVER)" \
+	DEPMODBASEDIR="$(TARGET_OUT_STAGING)" \
+	V=$(V)
+
+$(LTTNG_BUILD_DIR)/$(LOCAL_MODULE_FILENAME):
+	@echo "Building for $(KERNELVER)"
+	$(MAKE) $(LTTNG_MAKE_ARGS) -C $(LTTNG_SRC_DIR) modules
+	$(MAKE) $(LTTNG_MAKE_ARGS) INSTALL_MOD_PATH=$(TARGET_OUT_STAGING) -C $(LTTNG_SRC_DIR) modules_install
+
+include $(BUILD_CUSTOM)
